@@ -1,0 +1,30 @@
+{
+  "views": {
+    "reachedAccounts": 39983,
+    "totalViews": 259701
+  },
+  "contentTypes": {
+    "posts": 99.5,
+    "stories": 0.4,
+    "reels": 0.1
+  },
+  "metrics": {
+    "totalViews": 0,
+    "reactions": 8,
+    "newFollowers": 7
+  },
+  "profileActivity": {
+    "total": 23685,
+    "profileVisits": 22816,
+    "externalLinkTaps": 0,
+    "businessAddressTaps": 0
+  },
+  "businessId": "biz-1761828481126-qrj0l6c8t",
+  "year": 2025,
+  "month": 9,
+  "period": "30days",
+  "notes": "전달 대비 유입을 줄어들었으나 실제 전환에 가까운 외부링크 수치는 더 증가되었습니다. 실제 카카오톡 또는 자사몰의 수치도 파악하여 보다 정확하게 데이터를 파악하는게 좋습니다.",
+  "id": "insight-1761834661211-xpqcfc1s9",
+  "createdAt": "2025-10-30T14:31:01.211Z",
+  "updatedAt": "2025-10-30T14:31:01.211Z"
+}

@@ -1,0 +1,30 @@
+{
+  "businessId": "biz-1761828481126-qrj0l6c8t",
+  "year": 2025,
+  "month": 11,
+  "period": "30days",
+  "views": {
+    "reachedAccounts": 596345,
+    "totalViews": 123455
+  },
+  "contentTypes": {
+    "posts": 12345,
+    "stories": 1234,
+    "reels": 0
+  },
+  "metrics": {
+    "totalViews": 596514,
+    "reactions": 123455,
+    "newFollowers": 1235
+  },
+  "profileActivity": {
+    "total": 123455,
+    "profileVisits": 88755,
+    "externalLinkTaps": 345778,
+    "businessAddressTaps": 0
+  },
+  "originalImages": [],
+  "id": "insight-1762261745619-6ck1j83pp",
+  "createdAt": "2025-11-04T13:09:05.619Z",
+  "updatedAt": "2025-11-04T13:09:05.619Z"
+}

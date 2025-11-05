@@ -1,0 +1,31 @@
+{
+  "businessId": "biz-1761828481126-qrj0l6c8t",
+  "year": 2025,
+  "month": 7,
+  "period": "30days",
+  "views": {
+    "reachedAccounts": 14536,
+    "totalViews": 15926
+  },
+  "contentTypes": {
+    "posts": 1234,
+    "stories": 2346,
+    "reels": 456
+  },
+  "metrics": {
+    "totalViews": 12445,
+    "reactions": 1234,
+    "newFollowers": 642
+  },
+  "profileActivity": {
+    "total": 12365,
+    "profileVisits": 12,
+    "externalLinkTaps": 12,
+    "businessAddressTaps": 0
+  },
+  "notes": "이달은 문의수는 많았으나 실질적으로 연결된 요소가 없음",
+  "originalImages": [],
+  "id": "insight-1762261061187-f58pyps8e",
+  "createdAt": "2025-11-04T12:57:41.187Z",
+  "updatedAt": "2025-11-04T13:05:59.363Z"
+}

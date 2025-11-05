@@ -1,0 +1,29 @@
+{
+  "views": {
+    "reachedAccounts": 45464,
+    "totalViews": 300964
+  },
+  "contentTypes": {
+    "posts": 99.1,
+    "stories": 0.9,
+    "reels": 0
+  },
+  "metrics": {
+    "totalViews": 300964,
+    "reactions": 0,
+    "newFollowers": 7
+  },
+  "profileActivity": {
+    "total": 14124,
+    "profileVisits": 13281,
+    "externalLinkTaps": 814,
+    "businessAddressTaps": 28
+  },
+  "businessId": "biz-1761828481126-qrj0l6c8t",
+  "year": 2025,
+  "month": 8,
+  "period": "30days",
+  "id": "insight-1761833860805-la2mlu0u1",
+  "createdAt": "2025-10-30T14:17:40.805Z",
+  "updatedAt": "2025-10-30T14:31:58.779Z"
+}

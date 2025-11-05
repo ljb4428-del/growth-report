@@ -1,0 +1,416 @@
+import { useState } from 'react';
+import { Business, InsightData, AISettings } from '../types';
+import { aiAPI, insightAPI, settingsAPI } from '../utils/api';
+import { logger } from '../utils/logger';
+import { Upload, Image as ImageIcon, Settings, X } from 'lucide-react';
+import DataEditor from './DataEditor';
+
+interface Props {
+  business: Business;
+  onSuccess: () => void;
+}
+
+export default function DataUpload({ business, onSuccess }: Props) {
+  const [step, setStep] = useState<'upload' | 'settings' | 'converting' | 'editing' | 'manual'>('upload');
+  const [files, setFiles] = useState<File[]>([]);
+  const [aiSettings, setAiSettings] = useState<AISettings>({ provider: 'openai', apiKey: '' });
+  const [extractedData, setExtractedData] = useState<Partial<InsightData> | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [inputMode, setInputMode] = useState<'upload' | 'manual'>('upload');
+
+  // AI 설정 불러오기
+  async function loadAISettings() {
+    const result = await settingsAPI.getAISettings();
+    if (result.success && result.data) {
+      setAiSettings(result.data);
+    }
+  }
+
+  // AI 설정 저장
+  async function saveAISettings() {
+    const result = await settingsAPI.saveAISettings(aiSettings);
+    if (result.success) {
+      setShowSettings(false);
+      alert('AI 설정이 저장되었습니다.');
+    }
+  }
+
+  // 파일 드롭 핸들러
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(file =>
+      file.type.startsWith('image/')
+    );
+    
+    if (droppedFiles.length > 0) {
+      setFiles([...files, ...droppedFiles]);
+      logger.info('이미지 파일 추가됨', { count: droppedFiles.length });
+    }
+  }
+
+  // 파일 선택 핸들러
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setFiles([...files, ...selectedFiles]);
+      logger.info('이미지 파일 선택됨', { count: selectedFiles.length });
+    }
+  }
+
+  // 파일 제거
+  function removeFile(index: number) {
+    setFiles(files.filter((_, i) => i !== index));
+  }
+
+  // AI 변환 시작
+  async function startConversion() {
+    if (files.length === 0) {
+      alert('최소 1개 이상의 이미지를 업로드해주세요.');
+      return;
+    }
+
+    if (!aiSettings.apiKey) {
+      alert('AI API 키를 설정해주세요.');
+      setShowSettings(true);
+      return;
+    }
+
+    setStep('converting');
+    logger.info('AI 변환 시작', { fileCount: files.length, provider: aiSettings.provider });
+
+    try {
+      // 첫 번째 이미지로 변환 (여러 이미지를 한 번에 처리하는 경우 여기서 로직 추가)
+      const result = await aiAPI.convertImage(files[0], aiSettings.provider, aiSettings.apiKey);
+      
+      if (result.success && result.data) {
+        setExtractedData({
+          ...result.data,
+          businessId: business.id,
+          year: new Date().getFullYear(),
+          month: new Date().getMonth() + 1,
+          period: '30days', // 기본값
+        });
+        setStep('editing');
+      } else {
+        logger.error('AI 변환 실패', result.error || '알 수 없는 오류');
+        alert('AI 변환에 실패했습니다: ' + result.error);
+        setStep('upload');
+      }
+    } catch (error) {
+      logger.error('AI 변환 중 오류 발생', error as Error);
+      alert('AI 변환 중 오류가 발생했습니다.');
+      setStep('upload');
+    }
+  }
+
+  // 데이터 저장
+  async function handleSave(data: Partial<InsightData>) {
+    try {
+      // 먼저 이미지 업로드
+      const uploadedImages: string[] = [];
+      
+      if (files.length > 0) {
+        logger.info('이미지 업로드 시작', { count: files.length });
+        
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append('image', file);
+          formData.append('businessId', business.id);
+          
+          const response = await fetch('http://localhost:3000/api/upload/image', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            uploadedImages.push(result.data.filename);
+          } else {
+            logger.error('이미지 업로드 실패', file.name);
+          }
+        }
+        
+        logger.success('이미지 업로드 완료', { count: uploadedImages.length });
+      }
+      
+      // 이미지 경로 포함하여 데이터 저장
+      const dataWithImages = {
+        ...data,
+        originalImages: uploadedImages,
+      };
+      
+      const result = await insightAPI.create(dataWithImages);
+      
+      if (result.success) {
+        logger.success('인사이트 데이터 저장 완료');
+        alert('데이터가 저장되었습니다!');
+        onSuccess();
+      } else {
+        logger.error('데이터 저장 실패', result.error || '알 수 없는 오류');
+        alert('데이터 저장에 실패했습니다: ' + result.error);
+      }
+    } catch (error) {
+      logger.error('저장 중 오류 발생', error as Error);
+      alert('저장 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 수동 데이터 입력으로 시작
+  function startManualInput() {
+    const emptyData: Partial<InsightData> = {
+      businessId: business.id,
+      year: new Date().getFullYear(),
+      month: new Date().getMonth() + 1,
+      period: '30days',
+      views: { reachedAccounts: 0, totalViews: 0 },
+      contentTypes: { posts: 0, stories: 0, reels: 0 },
+      metrics: { totalViews: 0, reactions: 0, newFollowers: 0 },
+      profileActivity: { total: 0, profileVisits: 0, externalLinkTaps: 0, businessAddressTaps: 0 },
+    };
+    setExtractedData(emptyData);
+    setStep('editing');
+  }
+
+  if (step === 'editing' && extractedData) {
+    return (
+      <DataEditor
+        data={extractedData}
+        images={files}
+        onSave={handleSave}
+        onCancel={() => {
+          setStep('upload');
+          setExtractedData(null);
+        }}
+      />
+    );
+  }
+
+  if (step === 'converting') {
+    return (
+      <div className="card text-center py-12">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mx-auto mb-4"></div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          AI가 이미지를 분석하고 있습니다...
+        </h3>
+        <p className="text-gray-600">
+          잠시만 기다려주세요. 이미지에서 데이터를 추출하는 중입니다.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* AI 설정 버튼 */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => {
+            loadAISettings();
+            setShowSettings(true);
+          }}
+          className="btn-secondary flex items-center space-x-2"
+        >
+          <Settings className="w-4 h-4" />
+          <span>AI 설정</span>
+        </button>
+      </div>
+
+      {/* 입력 모드 탭 */}
+      <div className="card">
+        <div className="flex space-x-2 border-b border-gray-200">
+          <button
+            onClick={() => setInputMode('upload')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              inputMode === 'upload'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            📸 이미지 업로드
+          </button>
+          <button
+            onClick={() => setInputMode('manual')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              inputMode === 'manual'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            ✏️ 수동 입력
+          </button>
+        </div>
+      </div>
+
+      {/* 수동 입력 모드 */}
+      {inputMode === 'manual' && (
+        <div className="card">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            데이터 수동 입력
+          </h2>
+          <p className="text-gray-600 mb-6">
+            인스타그램 인사이트 데이터를 직접 입력하여 보고서를 생성할 수 있습니다.
+          </p>
+          <button
+            onClick={startManualInput}
+            className="btn-primary w-full"
+          >
+            데이터 입력 시작
+          </button>
+        </div>
+      )}
+
+      {/* 업로드 영역 */}
+      {inputMode === 'upload' && (
+        <div className="card">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            인스타그램 인사이트 스크린샷 업로드
+          </h2>
+          
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+              isDragging
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-300 hover:border-primary-400'
+            }`}
+          >
+            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              이미지를 드래그 앤 드롭하거나 클릭하여 선택
+            </h3>
+            <p className="text-gray-600 mb-4">
+              PNG, JPG, JPEG 형식의 이미지 파일을 업로드하세요
+            </p>
+            
+            <label className="btn-primary cursor-pointer inline-block">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              파일 선택
+            </label>
+          </div>
+
+          {/* 선택된 파일 목록 */}
+          {files.length > 0 && (
+            <div className="mt-6 space-y-2">
+              <h3 className="font-semibold text-gray-900">
+                선택된 이미지 ({files.length}개)
+              </h3>
+              <div className="space-y-2">
+                {files.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <ImageIcon className="w-5 h-5 text-gray-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">{file.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {(file.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      <X className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={startConversion}
+                className="btn-primary w-full mt-4"
+                disabled={!aiSettings.apiKey}
+              >
+                AI로 데이터 추출 시작
+              </button>
+              
+              {!aiSettings.apiKey && (
+                <p className="text-sm text-red-600 text-center mt-2">
+                  ⚠️ AI API 키를 먼저 설정해주세요
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI 설정 모달 */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">AI 설정</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  AI 제공자 선택
+                </label>
+                <select
+                  value={aiSettings.provider}
+                  onChange={(e) =>
+                    setAiSettings({ ...aiSettings, provider: e.target.value as 'openai' | 'gemini' | 'ocrspace' })
+                  }
+                  className="input-field"
+                >
+                  <option value="openai">OpenAI (GPT-4o)</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="ocrspace">OCR.space (무료)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  API 키
+                </label>
+                <input
+                  type="password"
+                  value={aiSettings.apiKey}
+                  onChange={(e) =>
+                    setAiSettings({ ...aiSettings, apiKey: e.target.value })
+                  }
+                  className="input-field"
+                  placeholder="API 키를 입력하세요"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {aiSettings.provider === 'openai' && 'OpenAI 계정에서 API 키를 발급받으세요 (https://platform.openai.com/api-keys)'}
+                  {aiSettings.provider === 'gemini' && 'Google AI Studio에서 API 키를 발급받으세요 (https://makersuite.google.com/app/apikey)'}
+                  {aiSettings.provider === 'ocrspace' && 'OCR.space에서 무료 API 키를 발급받으세요 (https://ocr.space/ocrapi)'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 mt-6">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="btn-secondary"
+              >
+                취소
+              </button>
+              <button onClick={saveAISettings} className="btn-primary">
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
