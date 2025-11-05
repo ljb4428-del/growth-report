@@ -9,6 +9,7 @@ interface Props {
   onCreate: (name: string, description?: string) => Promise<boolean>;
   onUpdate: (id: string, name: string, description?: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
+  onShowAISettings: () => void;
 }
 
 export default function BusinessSelector({
@@ -18,12 +19,14 @@ export default function BusinessSelector({
   onCreate,
   onUpdate,
   onDelete,
+  onShowAISettings,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   function handleCreate() {
     setFormData({ name: '', description: '' });
@@ -65,29 +68,50 @@ export default function BusinessSelector({
     }
   }
 
+  // 검색 필터링
+  const filteredBusinesses = businesses.filter((business) =>
+    business.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    business.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <>
-      <div className="relative">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"
+      <div className="relative w-80">
+        <div
+          className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-4 py-2 cursor-text hover:border-gray-400 transition-colors"
+          onClick={() => setIsOpen(true)}
         >
-          <Building2 className="w-5 h-5 text-primary-600" />
-          <span className="font-medium">{selectedBusiness.name}</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
+          <Building2 className="w-5 h-5 text-primary-600 flex-shrink-0" />
+          {isOpen ? (
+            <input
+              type="text"
+              placeholder="업체 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 outline-none text-gray-900 placeholder-gray-400"
+              autoFocus
+            />
+          ) : (
+            <span className="font-medium text-gray-900 flex-1">{selectedBusiness.name}</span>
+          )}
+          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
 
         {isOpen && (
           <>
             <div
               className="fixed inset-0 z-10"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                setIsOpen(false);
+                setSearchQuery('');
+              }}
             />
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
               <div className="p-2">
                 <button
                   onClick={() => {
                     setIsOpen(false);
+                    setSearchQuery('');
                     handleCreate();
                   }}
                   className="w-full flex items-center space-x-2 px-3 py-2 text-left hover:bg-gray-100 rounded-md text-primary-600 font-medium"
@@ -98,55 +122,63 @@ export default function BusinessSelector({
               </div>
 
               <div className="border-t border-gray-200 max-h-96 overflow-y-auto">
-                {businesses.map((business) => (
-                  <div
-                    key={business.id}
-                    className={`flex items-center justify-between px-4 py-3 hover:bg-gray-50 ${
-                      business.id === selectedBusiness.id ? 'bg-primary-50' : ''
-                    }`}
-                  >
-                    <button
-                      onClick={() => {
-                        onSelect(business);
-                        setIsOpen(false);
-                      }}
-                      className="flex-1 text-left"
+                {filteredBusinesses.length > 0 ? (
+                  filteredBusinesses.map((business) => (
+                    <div
+                      key={business.id}
+                      className={`flex items-center justify-between px-4 py-3 hover:bg-gray-50 ${
+                        business.id === selectedBusiness.id ? 'bg-primary-50' : ''
+                      }`}
                     >
-                      <div className="font-medium text-gray-900">{business.name}</div>
-                      {business.description && (
-                        <div className="text-sm text-gray-500 truncate">
-                          {business.description}
-                        </div>
-                      )}
-                    </button>
-
-                    <div className="flex items-center space-x-1 ml-2">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
+                          onSelect(business);
                           setIsOpen(false);
-                          handleEdit(business);
+                          setSearchQuery('');
                         }}
-                        className="p-1 hover:bg-gray-200 rounded"
-                        title="수정"
+                        className="flex-1 text-left"
                       >
-                        <Edit2 className="w-4 h-4 text-gray-600" />
+                        <div className="font-medium text-gray-900">{business.name}</div>
+                        {business.description && (
+                          <div className="text-sm text-gray-500 truncate">
+                            {business.description}
+                          </div>
+                        )}
                       </button>
-                      {businesses.length > 1 && (
+
+                      <div className="flex items-center space-x-1 ml-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteClick(business);
+                            setIsOpen(false);
+                            setSearchQuery('');
+                            handleEdit(business);
                           }}
-                          className="p-1 hover:bg-red-100 rounded"
-                          title="삭제"
+                          className="p-1 hover:bg-gray-200 rounded"
+                          title="수정"
                         >
-                          <Trash2 className="w-4 h-4 text-red-600" />
+                          <Edit2 className="w-4 h-4 text-gray-600" />
                         </button>
-                      )}
+                        {businesses.length > 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(business);
+                            }}
+                            className="p-1 hover:bg-red-100 rounded"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        )}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-8 text-center text-gray-500">
+                    <p>검색 결과가 없습니다.</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </>

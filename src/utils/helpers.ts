@@ -28,6 +28,56 @@ export function parseMonthString(monthStr: string): { year: number; month: numbe
   return { year, month };
 }
 
+// 연속된 월인지 확인
+export function isConsecutiveMonths(insights: InsightData[]): boolean {
+  if (insights.length <= 1) return true;
+  
+  const sorted = [...insights].sort((a, b) => {
+    const aDate = new Date(a.year, a.month - 1);
+    const bDate = new Date(b.year, b.month - 1);
+    return aDate.getTime() - bDate.getTime();
+  });
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const currentMonth = sorted[i].month;
+    const currentYear = sorted[i].year;
+    const nextMonth = sorted[i + 1].month;
+    const nextYear = sorted[i + 1].year;
+    
+    // 다음 월이 현재 월 + 1인지 확인
+    let expectedNextMonth = currentMonth + 1;
+    let expectedNextYear = currentYear;
+    
+    if (expectedNextMonth > 12) {
+      expectedNextMonth = 1;
+      expectedNextYear += 1;
+    }
+    
+    if (nextMonth !== expectedNextMonth || nextYear !== expectedNextYear) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+// 월 범위 문자열 생성 (예: "7월~10월")
+export function getMonthRangeString(insights: InsightData[]): string {
+  if (insights.length === 0) return '';
+  
+  const sorted = [...insights].sort((a, b) => {
+    const aDate = new Date(a.year, a.month - 1);
+    const bDate = new Date(b.year, b.month - 1);
+    return aDate.getTime() - bDate.getTime();
+  });
+
+  const firstMonth = sorted[0].month;
+  const lastMonth = sorted[sorted.length - 1].month;
+  
+  if (firstMonth === lastMonth) return `${firstMonth}월`;
+  return `${firstMonth}월~${lastMonth}월`;
+}
+
 // 증감률 계산
 export function calculateChange(current: number, previous: number): {
   value: number;
@@ -137,7 +187,11 @@ export function getTrendColor(trend: 'up' | 'down' | 'stable'): string {
 }
 
 // 인사이트 분석 텍스트 생성
-export function generateInsightText(comparison: ComparisonData): string {
+export function generateInsightText(
+  comparison: ComparisonData,
+  allInsights?: InsightData[],
+  monthRangePrefix?: string
+): string {
   const { current, previous, changes } = comparison;
   
   if (!previous) {
@@ -145,12 +199,50 @@ export function generateInsightText(comparison: ComparisonData): string {
   }
 
   const insights: string[] = [];
+  const prefix = monthRangePrefix ? `${monthRangePrefix} 대비 ` : '전월 대비 ';
 
+  // 연속된 월이고 3개 이상인 경우: 월별 상세 분석
+  if (allInsights && allInsights.length >= 3 && monthRangePrefix && !monthRangePrefix.includes('~')) {
+    // 순서대로 정렬
+    const sorted = [...allInsights].sort((a, b) => {
+      const aDate = new Date(a.year, a.month - 1);
+      const bDate = new Date(b.year, b.month - 1);
+      return aDate.getTime() - bDate.getTime();
+    });
+
+    // 인접한 월들의 비교 분석
+    for (let i = 1; i < sorted.length; i++) {
+      const prevMonth = sorted[i - 1];
+      const currMonth = sorted[i];
+      const monthChange = calculateChange(currMonth.profileActivity.total, prevMonth.profileActivity.total);
+      
+      insights.push(
+        `${prevMonth.month}월 대비 ${currMonth.month}월 프로필 활동이 ${formatPercent(monthChange.percentage)} ${
+          monthChange.trend === 'up' ? '증가' : monthChange.trend === 'down' ? '감소' : '유지'
+        }했습니다.`
+      );
+    }
+
+    // 전체 기간 비교
+    const firstMonth = sorted[0];
+    const lastMonth = sorted[sorted.length - 1];
+    const totalChange = calculateChange(lastMonth.profileActivity.total, firstMonth.profileActivity.total);
+    
+    insights.push(
+      `전체적으로 ${firstMonth.month}월 대비 ${lastMonth.month}월에 프로필 활동이 ${formatPercent(totalChange.percentage)} ${
+        totalChange.trend === 'up' ? '증가' : totalChange.trend === 'down' ? '감소' : '유지'
+      }했습니다.`
+    );
+
+    return insights.join(' ');
+  }
+
+  // 기본 분석 (2개월 비교 또는 비연속 월)
   // 프로필 활동 분석 (가장 중요)
   const profileChange = changes.profileTotal;
   if (profileChange) {
     insights.push(
-      `프로필 활동이 전월 대비 ${formatPercent(profileChange.percentage)} ${
+      `프로필 활동이 ${prefix}${formatPercent(profileChange.percentage)} ${
         profileChange.trend === 'up' ? '증가' : profileChange.trend === 'down' ? '감소' : '유지'
       }했습니다 (${formatNumber(profileChange.value)}).`
     );

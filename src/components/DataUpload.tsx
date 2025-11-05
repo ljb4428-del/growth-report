@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Business, InsightData, AISettings } from '../types';
-import { aiAPI, insightAPI, settingsAPI } from '../utils/api';
+import { useState, useEffect } from 'react';
+import { Business, InsightData } from '../types';
+import { aiAPI, insightAPI } from '../utils/api';
 import { logger } from '../utils/logger';
-import { Upload, Image as ImageIcon, Settings, X } from 'lucide-react';
+import { Upload, Image as ImageIcon, X } from 'lucide-react';
 import DataEditor from './DataEditor';
 
 interface Props {
@@ -13,28 +13,26 @@ interface Props {
 export default function DataUpload({ business, onSuccess }: Props) {
   const [step, setStep] = useState<'upload' | 'settings' | 'converting' | 'editing' | 'manual'>('upload');
   const [files, setFiles] = useState<File[]>([]);
-  const [aiSettings, setAiSettings] = useState<AISettings>({ provider: 'openai', apiKey: '' });
   const [extractedData, setExtractedData] = useState<Partial<InsightData> | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [inputMode, setInputMode] = useState<'upload' | 'manual'>('upload');
+  const [inputMode, setInputMode] = useState<'upload' | 'manual'>('manual');
 
-  // AI 설정 불러오기
-  async function loadAISettings() {
-    const result = await settingsAPI.getAISettings();
-    if (result.success && result.data) {
-      setAiSettings(result.data);
+  // 수동 입력 탭 선택 시 자동으로 폼 표시
+  useEffect(() => {
+    if (inputMode === 'manual' && !extractedData) {
+      const emptyData: Partial<InsightData> = {
+        businessId: business.id,
+        year: new Date().getFullYear(),
+        month: new Date().getMonth() + 1,
+        period: '30days',
+        views: { reachedAccounts: 0, totalViews: 0 },
+        contentTypes: { posts: 0, stories: 0, reels: 0 },
+        metrics: { totalViews: 0, reactions: 0, newFollowers: 0 },
+        profileActivity: { total: 0, profileVisits: 0, externalLinkTaps: 0, businessAddressTaps: 0 },
+      };
+      setExtractedData(emptyData);
     }
-  }
-
-  // AI 설정 저장
-  async function saveAISettings() {
-    const result = await settingsAPI.saveAISettings(aiSettings);
-    if (result.success) {
-      setShowSettings(false);
-      alert('AI 설정이 저장되었습니다.');
-    }
-  }
+  }, [inputMode, business.id]);
 
   // 파일 드롭 핸들러
   function handleDrop(e: React.DragEvent) {
@@ -158,21 +156,6 @@ export default function DataUpload({ business, onSuccess }: Props) {
     }
   }
 
-  // 수동 데이터 입력으로 시작
-  function startManualInput() {
-    const emptyData: Partial<InsightData> = {
-      businessId: business.id,
-      year: new Date().getFullYear(),
-      month: new Date().getMonth() + 1,
-      period: '30days',
-      views: { reachedAccounts: 0, totalViews: 0 },
-      contentTypes: { posts: 0, stories: 0, reels: 0 },
-      metrics: { totalViews: 0, reactions: 0, newFollowers: 0 },
-      profileActivity: { total: 0, profileVisits: 0, externalLinkTaps: 0, businessAddressTaps: 0 },
-    };
-    setExtractedData(emptyData);
-    setStep('editing');
-  }
 
   if (step === 'editing' && extractedData) {
     return (
@@ -203,63 +186,42 @@ export default function DataUpload({ business, onSuccess }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* AI 설정 버튼 */}
-      <div className="flex justify-end">
+    <div className="space-y-4">
+      {/* 입력 모드 탭 - 컴팩트 */}
+      <div className="flex space-x-1 border-b border-gray-200 pb-2">
         <button
-          onClick={() => {
-            loadAISettings();
-            setShowSettings(true);
-          }}
-          className="btn-secondary flex items-center space-x-2"
+          onClick={() => setInputMode('manual')}
+          className={`px-3 py-1.5 text-sm font-medium border-b-2 transition-colors ${
+            inputMode === 'manual'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
         >
-          <Settings className="w-4 h-4" />
-          <span>AI 설정</span>
+          ✏️ 수동 입력
+        </button>
+        <button
+          onClick={() => setInputMode('upload')}
+          className={`px-3 py-1.5 text-sm font-medium border-b-2 transition-colors ${
+            inputMode === 'upload'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          📸 이미지 업로드
         </button>
       </div>
 
-      {/* 입력 모드 탭 */}
-      <div className="card">
-        <div className="flex space-x-2 border-b border-gray-200">
-          <button
-            onClick={() => setInputMode('upload')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              inputMode === 'upload'
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            📸 이미지 업로드
-          </button>
-          <button
-            onClick={() => setInputMode('manual')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              inputMode === 'manual'
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            ✏️ 수동 입력
-          </button>
-        </div>
-      </div>
-
       {/* 수동 입력 모드 */}
-      {inputMode === 'manual' && (
-        <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
-            데이터 수동 입력
-          </h2>
-          <p className="text-gray-600 mb-6">
-            인스타그램 인사이트 데이터를 직접 입력하여 보고서를 생성할 수 있습니다.
-          </p>
-          <button
-            onClick={startManualInput}
-            className="btn-primary w-full"
-          >
-            데이터 입력 시작
-          </button>
-        </div>
+      {inputMode === 'manual' && extractedData && (
+        <DataEditor
+          data={extractedData}
+          images={[]}
+          onSave={handleSave}
+          onCancel={() => {
+            setInputMode('upload');
+            setExtractedData(null);
+          }}
+        />
       )}
 
       {/* 업로드 영역 */}
@@ -351,65 +313,6 @@ export default function DataUpload({ business, onSuccess }: Props) {
         </div>
       )}
 
-      {/* AI 설정 모달 */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">AI 설정</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  AI 제공자 선택
-                </label>
-                <select
-                  value={aiSettings.provider}
-                  onChange={(e) =>
-                    setAiSettings({ ...aiSettings, provider: e.target.value as 'openai' | 'gemini' | 'ocrspace' })
-                  }
-                  className="input-field"
-                >
-                  <option value="openai">OpenAI (GPT-4o)</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="ocrspace">OCR.space (무료)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  API 키
-                </label>
-                <input
-                  type="password"
-                  value={aiSettings.apiKey}
-                  onChange={(e) =>
-                    setAiSettings({ ...aiSettings, apiKey: e.target.value })
-                  }
-                  className="input-field"
-                  placeholder="API 키를 입력하세요"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {aiSettings.provider === 'openai' && 'OpenAI 계정에서 API 키를 발급받으세요 (https://platform.openai.com/api-keys)'}
-                  {aiSettings.provider === 'gemini' && 'Google AI Studio에서 API 키를 발급받으세요 (https://makersuite.google.com/app/apikey)'}
-                  {aiSettings.provider === 'ocrspace' && 'OCR.space에서 무료 API 키를 발급받으세요 (https://ocr.space/ocrapi)'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 mt-6">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="btn-secondary"
-              >
-                취소
-              </button>
-              <button onClick={saveAISettings} className="btn-primary">
-                저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

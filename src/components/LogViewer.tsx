@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LogEntry } from '../types';
 import { logger } from '../utils/logger';
-import { Terminal, X, Copy, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Copy, Trash2 } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 
 export default function LogViewer() {
@@ -54,16 +54,10 @@ export default function LogViewer() {
       {/* 토글 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 z-40 flex items-center space-x-2"
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full w-14 h-14 shadow-lg transition-all duration-200 z-40 flex items-center justify-center font-bold text-sm"
         title="로그 보기"
       >
-        <Terminal className="w-5 h-5" />
-        {logs.length > 0 && (
-          <span className="bg-white text-primary-600 text-xs font-bold rounded-full px-2 py-0.5">
-            {logs.length}
-          </span>
-        )}
-        {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+        LOG
       </button>
 
       {/* 로그 패널 */}
@@ -72,7 +66,6 @@ export default function LogViewer() {
           {/* 헤더 */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
             <div className="flex items-center space-x-2">
-              <Terminal className="w-5 h-5 text-gray-700" />
               <h3 className="font-semibold text-gray-900">시스템 로그</h3>
               <span className="text-sm text-gray-500">({filteredLogs.length})</span>
             </div>

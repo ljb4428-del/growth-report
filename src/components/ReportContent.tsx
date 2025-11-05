@@ -1,5 +1,5 @@
 import { Business, InsightData, ReportSettings } from '../types';
-import { formatDate, formatNumber, createComparisonData, generateInsightText } from '../utils/helpers';
+import { formatDate, formatNumber, createComparisonData, generateInsightText, isConsecutiveMonths, getMonthRangeString } from '../utils/helpers';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import LineChartComponent from './charts/LineChartComponent';
 import BarChartComponent from './charts/BarChartComponent';
@@ -28,10 +28,27 @@ export default function ReportContent({ business, insights, settings }: Props) {
   });
 
   const latestInsight = sortedInsights[0];
-  const previousInsight = sortedInsights.length > 1 ? sortedInsights[1] : undefined;
+  
+  // 연속된 월인지 확인
+  const isConsecutive = isConsecutiveMonths(insights);
+  
+  // 비연속된 월의 경우: 첫 번째 월과 마지막 월 비교
+  let previousInsight: InsightData | undefined;
+  let monthRangePrefix: string | undefined;
+  
+  if (!isConsecutive && sortedInsights.length > 1) {
+    previousInsight = sortedInsights[sortedInsights.length - 1]; // 가장 이전 월
+    monthRangePrefix = getMonthRangeString(insights); // "7월~10월" (비연속)
+  } else if (isConsecutive && sortedInsights.length > 1) {
+    previousInsight = sortedInsights[1]; // 이전 월
+    // 연속 월인 경우만 monthRangePrefix 설정 (3개월 이상일 때 월별 분석)
+    if (sortedInsights.length >= 3) {
+      monthRangePrefix = getMonthRangeString(insights); // "7월~9월" (연속)
+    }
+  }
 
   const comparison = createComparisonData(latestInsight, previousInsight);
-  const insightText = generateInsightText(comparison);
+  const insightText = generateInsightText(comparison, insights, monthRangePrefix);
 
   return (
     <div className="space-y-6">
@@ -42,13 +59,15 @@ export default function ReportContent({ business, insights, settings }: Props) {
             <h1 className="text-3xl font-bold mb-2">{business.name}</h1>
             <h2 className="text-xl">인스타그램 인사이트 월별 비교 보고서</h2>
           </div>
-          <div className="text-center">
-            <p className="text-primary-100">
-              {latestInsight.year}년 {latestInsight.month}월 ({latestInsight.period === '14days' ? '14일' : '30일'} 기준)
-            </p>
-            <p className="text-sm text-primary-200 mt-2">
-              생성일: {formatDate(new Date(), 'yyyy년 MM월 dd일 HH:mm')}
-            </p>
+          <div className="flex justify-end text-right">
+            <div>
+              <p className="text-primary-100">
+                {latestInsight.year}년 {latestInsight.month}월 ({latestInsight.period === '14days' ? '14일' : '30일'} 기준)
+              </p>
+              <p className="text-sm text-primary-200 mt-1">
+                생성일: {formatDate(new Date(), 'yyyy년 MM월 dd일')}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -76,43 +95,103 @@ export default function ReportContent({ business, insights, settings }: Props) {
         {/* 우측: 데이터 및 그래프 */}
         <div className={latestInsight.originalImages && latestInsight.originalImages.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'}>
           <div className="space-y-6">
-            {/* 핵심 인사이트 */}
+            {/* 인사이트 요약 */}
             <div className="card">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">📊 핵심 인사이트</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">📊 인사이트 요약</h3>
               <p className="text-gray-700 leading-relaxed">{insightText}</p>
             </div>
 
-            {/* 프로필 활동 (가장 중요) */}
+            {/* 프로필 활동 */}
             {settings.includeSections.profileActivity && (
               <div className="card">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">
                   👥 프로필 활동
-                  <span className="ml-2 text-sm bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                    중요
-                  </span>
                 </h3>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <MetricCard
-                    title="전체"
-                    value={latestInsight.profileActivity.total}
-                    change={comparison.changes.profileTotal}
-                  />
-                  <MetricCard
-                    title="프로필 방문"
-                    value={latestInsight.profileActivity.profileVisits}
-                    change={comparison.changes.profileVisits}
-                  />
-                  <MetricCard
-                    title="외부링크 클릭"
-                    value={latestInsight.profileActivity.externalLinkTaps}
-                    change={comparison.changes.externalLinkTaps}
-                  />
-                  <MetricCard
-                    title="비즈니스 주소"
-                    value={latestInsight.profileActivity.businessAddressTaps}
-                    change={comparison.changes.businessAddressTaps}
-                  />
+                  {/* 전체 */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-3">전체</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gray-400">{comparison.previous?.profileActivity.total || 0}</span>
+                      <span className="text-gray-300">/</span>
+                      <span className="text-2xl font-bold text-gray-900">{latestInsight.profileActivity.total}</span>
+                    </div>
+                    {comparison.changes.profileTotal && (
+                      <div className="border-t border-gray-200 pt-3 text-center">
+                        <p className={`text-lg font-bold ${comparison.changes.profileTotal.trend === 'up' ? 'text-green-600' : comparison.changes.profileTotal.trend === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
+                          {comparison.changes.profileTotal.trend === 'up' ? '📈' : comparison.changes.profileTotal.trend === 'down' ? '📉' : '➡️'}
+                          {comparison.changes.profileTotal.percentage >= 0 ? '+' : ''}{comparison.changes.profileTotal.percentage.toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          ({comparison.changes.profileTotal.value >= 0 ? '+' : ''}{formatNumber(comparison.changes.profileTotal.value)})
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 프로필 방문 */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-3">프로필 방문</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gray-400">{comparison.previous?.profileActivity.profileVisits || 0}</span>
+                      <span className="text-gray-300">/</span>
+                      <span className="text-2xl font-bold text-gray-900">{latestInsight.profileActivity.profileVisits}</span>
+                    </div>
+                    {comparison.changes.profileVisits && (
+                      <div className="border-t border-gray-200 pt-3 text-center">
+                        <p className={`text-lg font-bold ${comparison.changes.profileVisits.trend === 'up' ? 'text-green-600' : comparison.changes.profileVisits.trend === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
+                          {comparison.changes.profileVisits.trend === 'up' ? '📈' : comparison.changes.profileVisits.trend === 'down' ? '📉' : '➡️'}
+                          {comparison.changes.profileVisits.percentage >= 0 ? '+' : ''}{comparison.changes.profileVisits.percentage.toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          ({comparison.changes.profileVisits.value >= 0 ? '+' : ''}{formatNumber(comparison.changes.profileVisits.value)})
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 외부링크 클릭 */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-3">외부링크 클릭</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gray-400">{comparison.previous?.profileActivity.externalLinkTaps || 0}</span>
+                      <span className="text-gray-300">/</span>
+                      <span className="text-2xl font-bold text-gray-900">{latestInsight.profileActivity.externalLinkTaps}</span>
+                    </div>
+                    {comparison.changes.externalLinkTaps && (
+                      <div className="border-t border-gray-200 pt-3 text-center">
+                        <p className={`text-lg font-bold ${comparison.changes.externalLinkTaps.trend === 'up' ? 'text-green-600' : comparison.changes.externalLinkTaps.trend === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
+                          {comparison.changes.externalLinkTaps.trend === 'up' ? '📈' : comparison.changes.externalLinkTaps.trend === 'down' ? '📉' : '➡️'}
+                          {comparison.changes.externalLinkTaps.percentage >= 0 ? '+' : ''}{comparison.changes.externalLinkTaps.percentage.toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          ({comparison.changes.externalLinkTaps.value >= 0 ? '+' : ''}{formatNumber(comparison.changes.externalLinkTaps.value)})
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 비즈니스 주소 */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-3">비즈니스 주소</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gray-400">{comparison.previous?.profileActivity.businessAddressTaps || 0}</span>
+                      <span className="text-gray-300">/</span>
+                      <span className="text-2xl font-bold text-gray-900">{latestInsight.profileActivity.businessAddressTaps}</span>
+                    </div>
+                    {comparison.changes.businessAddressTaps && (
+                      <div className="border-t border-gray-200 pt-3 text-center">
+                        <p className={`text-lg font-bold ${comparison.changes.businessAddressTaps.trend === 'up' ? 'text-green-600' : comparison.changes.businessAddressTaps.trend === 'down' ? 'text-red-600' : 'text-gray-600'}`}>
+                          {comparison.changes.businessAddressTaps.trend === 'up' ? '📈' : comparison.changes.businessAddressTaps.trend === 'down' ? '📉' : '➡️'}
+                          {comparison.changes.businessAddressTaps.percentage >= 0 ? '+' : ''}{comparison.changes.businessAddressTaps.percentage.toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          ({comparison.changes.businessAddressTaps.value >= 0 ? '+' : ''}{formatNumber(comparison.changes.businessAddressTaps.value)})
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {settings.includeGraphs.lineChart && insights.length > 1 && (

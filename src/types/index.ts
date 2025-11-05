@@ -8,6 +8,10 @@ export interface InsightData {
   createdAt: string;
   updatedAt: string;
   
+  // 인스타그램 계정 정보
+  businessName?: string; // 업체명
+  instagramId?: string; // 인스타그램 계정 ID
+  
   // 조회 관련
   views: {
     reachedAccounts: number;

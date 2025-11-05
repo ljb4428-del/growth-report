@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Business } from './types';
-import { businessAPI } from './utils/api';
+import { Business, AISettings } from './types';
+import { businessAPI, settingsAPI } from './utils/api';
 import { logger } from './utils/logger';
-import BusinessSelector from './components/BusinessSelector';
 import Dashboard from './components/Dashboard';
 import LogViewer from './components/LogViewer';
-import { Building2 } from 'lucide-react';
+import { Building2, Settings } from 'lucide-react';
 
 function App() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAISettingsModal, setShowAISettingsModal] = useState(false);
+  const [aiSettings, setAiSettings] = useState<AISettings>({ provider: 'openai', apiKey: '' });
 
   useEffect(() => {
     loadBusinesses();
@@ -78,6 +79,24 @@ function App() {
     return false;
   }
 
+  async function handleOpenAISettings() {
+    const result = await settingsAPI.getAISettings();
+    if (result.success && result.data) {
+      setAiSettings(result.data);
+    }
+    setShowAISettingsModal(true);
+  }
+
+  async function handleSaveAISettings() {
+    const result = await settingsAPI.saveAISettings(aiSettings);
+    if (result.success) {
+      setShowAISettingsModal(false);
+      alert('AI 설정이 저장되었습니다.');
+    } else {
+      alert('AI 설정 저장에 실패했습니다.');
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -92,39 +111,28 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Building2 className="w-8 h-8 text-primary-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Growth Report
-                </h1>
-                <p className="text-sm text-gray-500">
-                  인스타그램 인사이트 월별 비교 보고서
-                </p>
-              </div>
-            </div>
-            
-            {selectedBusiness && (
-              <BusinessSelector
-                businesses={businesses}
-                selectedBusiness={selectedBusiness}
-                onSelect={setSelectedBusiness}
-                onCreate={handleCreateBusiness}
-                onUpdate={handleUpdateBusiness}
-                onDelete={handleDeleteBusiness}
-              />
-            )}
+      <header className="bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div>
+            <h1 className="text-3xl font-bold text-white">
+              Growth Report
+            </h1>
+            <p className="text-purple-100 text-sm mt-1">
+              인스타그램 인사이트 월별 비교 보고서
+            </p>
           </div>
         </div>
       </header>
 
       {/* 메인 컨텐츠 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {selectedBusiness ? (
-          <Dashboard business={selectedBusiness} />
+          <Dashboard 
+            business={selectedBusiness}
+            businesses={businesses}
+            onSelectBusiness={setSelectedBusiness}
+            onShowAISettings={handleOpenAISettings}
+          />
         ) : (
           <div className="text-center py-12">
             <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -151,6 +159,71 @@ function App() {
 
       {/* 로그 뷰어 */}
       <LogViewer />
+
+      {/* AI 설정 모달 */}
+      {showAISettingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 rounded-t-2xl">
+              <h2 className="text-xl font-bold text-white">AI API 설정</h2>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  AI 제공자 선택
+                </label>
+                <select
+                  value={aiSettings.provider}
+                  onChange={(e) =>
+                    setAiSettings({ ...aiSettings, provider: e.target.value as 'openai' | 'gemini' | 'ocrspace' })
+                  }
+                  className="w-full px-4 py-2.5 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:outline-none bg-gray-50 text-gray-900"
+                >
+                  <option value="openai">OpenAI (GPT-4o)</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="ocrspace">OCR.space (무료)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  API 키
+                </label>
+                <input
+                  type="password"
+                  value={aiSettings.apiKey}
+                  onChange={(e) =>
+                    setAiSettings({ ...aiSettings, apiKey: e.target.value })
+                  }
+                  className="w-full px-4 py-2.5 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:outline-none bg-gray-50 text-gray-900"
+                  placeholder="API 키를 입력하세요"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  {aiSettings.provider === 'openai' && 'OpenAI 계정에서 API 키를 발급받으세요 (https://platform.openai.com/api-keys)'}
+                  {aiSettings.provider === 'gemini' && 'Google AI Studio에서 API 키를 발급받으세요 (https://makersuite.google.com/app/apikey)'}
+                  {aiSettings.provider === 'ocrspace' && 'OCR.space에서 무료 API 키를 발급받으세요 (https://ocr.space/ocrapi)'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 px-6 py-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowAISettingsModal(false)}
+                className="px-5 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleSaveAISettings} 
+                className="px-5 py-2 text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg font-medium transition-all shadow-md hover:shadow-lg"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
