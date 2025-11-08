@@ -44,3 +44,204 @@
   @apply bg-gray-500;
 }
 
+/* PDF 출력 스타일 - 템플릿 기반 */
+:root {
+  --page-padding: 14mm;
+  --gap: 8mm;
+  --card-gap: 6mm;
+  --card-min-h: 28mm;
+  --scale-tight: 0.98;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+
+/* PDF 출력 스타일 - .exporting 스코프에서만 적용 */
+.exporting {
+  font-family: var(--font);
+}
+
+.exporting #report-root {
+  padding: var(--page-padding);
+  box-sizing: border-box;
+}
+
+.exporting .break-inside-avoid {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.exporting .card {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.exporting .space-y-6 > * {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.exporting .report-section {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin-top: var(--gap);
+}
+
+.exporting .report-section:first-child {
+  margin-top: 0;
+}
+
+.exporting .report-section h2,
+.exporting .report-section h3 {
+  font-size: 13pt;
+  margin: 0 0 4mm 0;
+}
+
+/* 헤더 스타일 */
+.exporting .header {
+  background: linear-gradient(90deg, #6d28d9 0%, #ec4899 100%);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8mm 12mm;
+  margin-bottom: var(--gap);
+}
+
+.exporting .header .title {
+  font-size: 18pt;
+  font-weight: 700;
+  margin: 0 0 2mm 0;
+}
+
+.exporting .header .subtitle {
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+/* 헤더 내부 여백 조정 */
+.exporting .header > div > div:first-child {
+  margin-bottom: 3mm !important;
+}
+
+.exporting .header h1 {
+  margin-bottom: 1mm !important;
+}
+
+.exporting .header h2 {
+  margin-bottom: 0 !important;
+}
+
+/* 카드 그리드 */
+.exporting .cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
+  gap: var(--card-gap);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.exporting .card-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 6mm 10mm;
+  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.exporting .card-item .label {
+  font-size: 10pt;
+  color: #6b7280;
+  margin-bottom: 2mm !important;
+}
+
+.exporting .card-item .value {
+  font-size: 15pt;
+  font-weight: 700;
+  margin-top: 1mm;
+}
+
+/* 카드 내부 요소 여백 조정 */
+.exporting .card-item > div {
+  margin-bottom: 2mm !important;
+}
+
+.exporting .card-item .border-t {
+  padding-top: 2mm !important;
+}
+
+.exporting .card-item .text-xs {
+  margin-top: 0.5mm !important;
+}
+
+/* 보드 레이아웃 (2열) */
+.exporting .board-grid {
+  display: grid;
+  gap: var(--card-gap);
+  grid-template-columns: repeat(2, 1fr);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.exporting .panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.exporting .chart-container {
+  height: 70mm;
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* KPI 그리드 (3열) */
+.exporting .kpis-grid {
+  display: grid;
+  gap: var(--card-gap);
+  grid-template-columns: repeat(3, 1fr);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.exporting [class*="sticky"],
+.exporting [class*="fixed"] {
+  position: static !important;
+}
+
+.exporting .overflow-visible {
+  overflow: visible !important;
+}
+
+.exporting .whitespace-nowrap {
+  white-space: nowrap !important;
+}
+
+/* compact-print: 인쇄 시 살짝 축소하여 페이지 수 줄이기 */
+.exporting.compact-print {
+  transform: scale(var(--scale-tight));
+  transform-origin: top left;
+}
+
+/* 인쇄용 규칙 */
+@page {
+  size: A4;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+

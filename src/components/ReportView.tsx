@@ -63,41 +63,190 @@ export default function ReportView({ business, insights }: Props) {
     setSettings({ ...settings, selectedMonths: [] });
   }
 
-  // PDF 내보내기
+  // 클론에서 SVG 차트를 이미지로 스냅샷
+  async function snapshotChartsInClone(clone: HTMLElement): Promise<void> {
+    const svgElements = clone.querySelectorAll('svg');
+    
+    for (const svg of svgElements) {
+      try {
+        const originalWidth = svg.clientWidth || svg.viewBox.baseVal.width || 800;
+        const originalHeight = svg.clientHeight || svg.viewBox.baseVal.height || 600;
+        
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+        
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = originalWidth;
+            canvas.height = originalHeight;
+            
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              
+              const dataUrl = canvas.toDataURL('image/png');
+              const imgElement = document.createElement('img');
+              imgElement.src = dataUrl;
+              imgElement.style.width = `${originalWidth}px`;
+              imgElement.style.height = `${originalHeight}px`;
+              imgElement.style.display = 'block';
+              
+              if (svg.parentNode) {
+                svg.parentNode.replaceChild(imgElement, svg);
+              }
+              
+              URL.revokeObjectURL(url);
+              resolve(null);
+            } else {
+              reject(new Error('Canvas context not available'));
+            }
+          };
+          img.onerror = reject;
+          img.src = url;
+        });
+      } catch (error) {
+        logger.warn('차트 스냅샷 실패', error as Error);
+      }
+    }
+  }
+
+  // PDF 내보내기 - 섹션별 캡처 방식
   async function exportToPDF() {
     if (!reportRef.current) return;
 
     setExporting(true);
     logger.info('PDF 내보내기 시작');
 
-    try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
+    let clone: HTMLElement | null = null;
+    let exportContainer: HTMLElement | null = null;
 
-      const imgData = canvas.toDataURL('image/png');
+    try {
+      const element = reportRef.current;
+      
+      // 오프스크린 클론 생성
+      clone = element.cloneNode(true) as HTMLElement;
+      clone.classList.add('exporting', 'compact-print');
+      
+      // 오프스크린 컨테이너 생성
+      exportContainer = document.createElement('div');
+      exportContainer.style.position = 'fixed';
+      exportContainer.style.left = '-9999px';
+      exportContainer.style.top = '0';
+      exportContainer.style.width = `${element.scrollWidth}px`;
+      exportContainer.style.height = `${element.scrollHeight}px`;
+      exportContainer.style.backgroundColor = '#ffffff';
+      exportContainer.style.overflow = 'hidden';
+      exportContainer.appendChild(clone);
+      document.body.appendChild(exportContainer);
+      
+      // 이미지 로딩 대기
+      const images = clone.querySelectorAll('img');
+      const imagePromises = Array.from(images).map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve; // 실패해도 계속 진행
+          setTimeout(resolve, 2000); // 타임아웃
+        });
+      });
+      await Promise.all(imagePromises);
+      
+      // 클론에서 차트를 이미지로 스냅샷
+      await snapshotChartsInClone(clone);
+      
+      // 스타일이 적용되도록 잠시 대기
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // .report-section 요소들 찾기
+      const sections = clone.querySelectorAll('.report-section');
+      
+      if (sections.length === 0) {
+        throw new Error('보고서 섹션을 찾을 수 없습니다.');
+      }
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
       });
 
-      const imgWidth = 210;
+      // A4 용지 크기 (mm) - 템플릿 기준
+      const pageWidth = 210;
       const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      const margin = 10; // @page margin
+      const pagePadding = 14; // --page-padding
+      const gap = 6; // --gap (섹션 간격) - 줄여서 더 많은 내용 배치
+      const pdfContentWidth = pageWidth - (margin * 2);
+      const contentHeight = pageHeight - (margin * 2);
+      
+      let currentY = margin;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      // 각 섹션을 개별적으로 캡처하고 배치
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i] as HTMLElement;
+        
+        // 섹션을 개별적으로 캡처 (scale을 2로 줄여서 더 많은 내용이 들어가도록)
+        const sectionCanvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          scrollY: 0,
+          windowWidth: element.scrollWidth,
+          windowHeight: section.scrollHeight,
+          width: section.scrollWidth,
+          height: section.scrollHeight,
+        });
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        // 섹션 이미지 크기 계산
+        const sectionImgWidth = pdfContentWidth;
+        const sectionImgHeight = (sectionCanvas.height * pdfContentWidth) / sectionCanvas.width;
+        const sectionImgData = sectionCanvas.toDataURL('image/png');
+
+        // 남은 페이지 높이 확인
+        const remainingHeight = contentHeight - (currentY - margin);
+        
+        // 현재 섹션이 남은 공간에 들어가지 않으면 새 페이지 시작 (섹션 개수 제한 제거)
+        if (sectionImgHeight > remainingHeight && currentY > margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
+
+        // 섹션이 한 페이지보다 크면 여러 페이지로 나누기
+        if (sectionImgHeight > contentHeight) {
+          // 섹션을 여러 페이지로 나누기
+          let sectionHeightLeft = sectionImgHeight;
+          let sectionPosition = currentY;
+
+          // 첫 부분
+          pdf.addImage(sectionImgData, 'PNG', margin, sectionPosition, sectionImgWidth, sectionImgHeight, undefined, 'FAST');
+          sectionHeightLeft -= (contentHeight - (currentY - margin));
+          currentY = margin;
+
+          // 나머지 부분
+          while (sectionHeightLeft > 0) {
+            pdf.addPage();
+            sectionPosition = margin - (sectionImgHeight - sectionHeightLeft);
+            pdf.addImage(sectionImgData, 'PNG', margin, sectionPosition, sectionImgWidth, sectionImgHeight, undefined, 'FAST');
+            sectionHeightLeft -= contentHeight;
+            currentY = margin;
+          }
+        } else {
+          // 섹션이 한 페이지에 들어가는 경우
+          pdf.addImage(sectionImgData, 'PNG', margin, currentY, sectionImgWidth, sectionImgHeight, undefined, 'FAST');
+          currentY += sectionImgHeight + gap; // 섹션 간 간격
+          
+          // 다음 페이지가 필요한지 확인
+          if (currentY > contentHeight + margin) {
+            pdf.addPage();
+            currentY = margin;
+          }
+        }
       }
 
       const fileName = `${business.name}_인사이트_보고서_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -109,6 +258,10 @@ export default function ReportView({ business, insights }: Props) {
       logger.error('PDF 내보내기 실패', error as Error);
       alert('PDF 내보내기 중 오류가 발생했습니다.');
     } finally {
+      // 클론 및 컨테이너 제거
+      if (exportContainer && exportContainer.parentNode) {
+        exportContainer.parentNode.removeChild(exportContainer);
+      }
       setExporting(false);
     }
   }
@@ -129,7 +282,7 @@ export default function ReportView({ business, insights }: Props) {
       <div className="card">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <FileText className="w-6 h-6 text-primary-600" />
+            <FileText className="w-6 h-6 text-purple-600" />
             <div>
               <h2 className="text-xl font-bold text-gray-900">보고서 생성</h2>
               <p className="text-sm text-gray-600">
@@ -150,7 +303,7 @@ export default function ReportView({ business, insights }: Props) {
             <button
               onClick={exportToPDF}
               disabled={exporting || filteredInsights.length === 0}
-              className="btn-primary"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4 inline mr-2" />
               PDF 내보내기
@@ -174,7 +327,7 @@ export default function ReportView({ business, insights }: Props) {
                 <div className="space-x-2">
                   <button
                     onClick={selectAllMonths}
-                    className="text-sm text-primary-600 hover:text-primary-700"
+                    className="text-sm text-purple-600 hover:text-purple-700"
                   >
                     전체 선택
                   </button>
@@ -193,7 +346,7 @@ export default function ReportView({ business, insights }: Props) {
                     onClick={() => toggleMonth(month)}
                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                       settings.selectedMonths.includes(month)
-                        ? 'bg-primary-600 text-white'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -295,12 +448,12 @@ export default function ReportView({ business, insights }: Props) {
       {/* 보고서 내용 */}
       {exporting && (
         <div className="card text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">보고서를 내보내는 중...</p>
         </div>
       )}
 
-      <div ref={reportRef}>
+      <div ref={reportRef} className="bg-white w-full" style={{ maxWidth: '100%' }}>
         <ReportContent
           business={business}
           insights={filteredInsights}

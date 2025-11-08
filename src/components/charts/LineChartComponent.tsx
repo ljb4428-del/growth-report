@@ -28,10 +28,10 @@ export default function LineChartComponent({ insights, dataKey, title, color = '
   });
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 w-full">
       <h4 className="text-lg font-semibold text-gray-900 mb-4">{title}</h4>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <LineChart data={chartData} margin={{ top: 5, right: 10, left: 15, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="name" 
@@ -40,6 +40,7 @@ export default function LineChartComponent({ insights, dataKey, title, color = '
           <YAxis 
             style={{ fontSize: '12px' }}
             tickFormatter={(value) => formatNumber(value)}
+            width={60}
           />
           <Tooltip
             formatter={(value: any) => [formatNumber(value), '값']}

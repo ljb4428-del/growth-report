@@ -1,7 +1,7 @@
 {
   "businessId": "biz-1761828481126-qrj0l6c8t",
   "year": 2025,
-  "month": 7,
+  "month": 8,
   "period": "30days",
   "views": {
     "reachedAccounts": 14536,
@@ -27,5 +27,7 @@
   "originalImages": [],
   "id": "insight-1762261061187-f58pyps8e",
   "createdAt": "2025-11-04T12:57:41.187Z",
-  "updatedAt": "2025-11-04T13:05:59.363Z"
+  "updatedAt": "2025-11-06T01:51:00.762Z",
+  "businessName": "테스트",
+  "instagramId": "lindadeco_official"
 }

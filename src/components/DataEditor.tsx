@@ -16,9 +16,9 @@ export default function DataEditor({ data: initialData, images, onSave, onCancel
 
   // 숫자를 쉼표 포맷으로 변환 (예: 1000 -> "1,000")
   function formatNumberWithComma(num: number | string | undefined): string {
-    if (num === undefined || num === null || num === '') return '0';
+    if (num === undefined || num === null || num === '') return '';
     const numValue = typeof num === 'string' ? parseFloat(num.replace(/,/g, '')) : num;
-    if (isNaN(numValue)) return '0';
+    if (isNaN(numValue) || numValue === 0) return '';
     return new Intl.NumberFormat('ko-KR').format(numValue);
   }
 
@@ -213,10 +213,10 @@ export default function DataEditor({ data: initialData, images, onSave, onCancel
                   <input
                     type="number"
                     step="0.1"
-                    value={data.contentTypes?.posts || 0}
+                    value={data.contentTypes?.posts && data.contentTypes.posts !== 0 ? data.contentTypes.posts : ''}
                     onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      updateField('contentTypes.posts', Math.round(value * 10) / 10);
+                      const value = parseFloat(e.target.value);
+                      updateField('contentTypes.posts', isNaN(value) ? 0 : Math.round(value * 10) / 10);
                     }}
                     className="input-field"
                     placeholder="예: 6 또는 6.5"
@@ -229,10 +229,10 @@ export default function DataEditor({ data: initialData, images, onSave, onCancel
                   <input
                     type="number"
                     step="0.1"
-                    value={data.contentTypes?.stories || 0}
+                    value={data.contentTypes?.stories && data.contentTypes.stories !== 0 ? data.contentTypes.stories : ''}
                     onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      updateField('contentTypes.stories', Math.round(value * 10) / 10);
+                      const value = parseFloat(e.target.value);
+                      updateField('contentTypes.stories', isNaN(value) ? 0 : Math.round(value * 10) / 10);
                     }}
                     className="input-field"
                     placeholder="예: 4 또는 4.5"
@@ -245,10 +245,10 @@ export default function DataEditor({ data: initialData, images, onSave, onCancel
                   <input
                     type="number"
                     step="0.1"
-                    value={data.contentTypes?.reels || 0}
+                    value={data.contentTypes?.reels && data.contentTypes.reels !== 0 ? data.contentTypes.reels : ''}
                     onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      updateField('contentTypes.reels', Math.round(value * 10) / 10);
+                      const value = parseFloat(e.target.value);
+                      updateField('contentTypes.reels', isNaN(value) ? 0 : Math.round(value * 10) / 10);
                     }}
                     className="input-field"
                     placeholder="예: 20 또는 20.3"

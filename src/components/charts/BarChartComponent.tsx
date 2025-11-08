@@ -47,10 +47,10 @@ export default function BarChartComponent({ insights, dataKeys, title }: Props) 
   };
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 w-full">
       <h4 className="text-lg font-semibold text-gray-900 mb-4">{title}</h4>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <BarChart data={chartData} margin={{ top: 5, right: 10, left: 15, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="name" 
@@ -59,6 +59,7 @@ export default function BarChartComponent({ insights, dataKeys, title }: Props) 
           <YAxis 
             style={{ fontSize: '12px' }}
             tickFormatter={(value) => formatNumber(value)}
+            width={60}
           />
           <Tooltip
             formatter={(value: any, name: string) => [
@@ -69,6 +70,7 @@ export default function BarChartComponent({ insights, dataKeys, title }: Props) 
           />
           <Legend 
             formatter={(value) => labelMap[value] || value}
+            wrapperStyle={{ paddingTop: '10px' }}
           />
           {dataKeys.map((key, index) => {
             const label = key.split('.').pop() || key;
@@ -77,6 +79,7 @@ export default function BarChartComponent({ insights, dataKeys, title }: Props) 
                 key={key}
                 dataKey={label}
                 fill={COLORS[index % COLORS.length]}
+                barSize={45}
               />
             );
           })}

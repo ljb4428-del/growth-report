@@ -1,6 +1,6 @@
 {
   "ai": {
-    "provider": "ocrspace",
+    "provider": "gemini",
     "apiKey": "K87424503988957"
   }
 }

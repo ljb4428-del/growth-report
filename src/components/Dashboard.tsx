@@ -286,8 +286,8 @@ export default function Dashboard({ business, businesses, onSelectBusiness, onSh
       {/* 월별 보고서 모달 */}
       {showMonthlyReportModal && selectedMonthlyInsights.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowMonthlyReportModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-7xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <div className="bg-white rounded-2xl w-full max-w-[80vw] max-h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0 z-10">
               <h2 className="text-xl font-bold text-white">당 월 보고서</h2>
               <button
                 onClick={() => setShowMonthlyReportModal(false)}
@@ -296,11 +296,13 @@ export default function Dashboard({ business, businesses, onSelectBusiness, onSh
                 ×
               </button>
             </div>
-            <div className="p-6">
-              <ReportView
-                business={business}
-                insights={selectedMonthlyInsights}
-              />
+            <div className="overflow-y-auto flex-1">
+              <div className="p-4">
+                <ReportView
+                  business={business}
+                  insights={selectedMonthlyInsights}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -309,8 +311,8 @@ export default function Dashboard({ business, businesses, onSelectBusiness, onSh
       {/* 비교 보고서 모달 */}
       {showComparisonReportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowComparisonReportModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-7xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <div className="bg-white rounded-2xl w-full max-w-[80vw] max-h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between rounded-t-2xl flex-shrink-0 z-10">
               <h2 className="text-xl font-bold text-white">비교 보고서 생성</h2>
               <button
                 onClick={() => setShowComparisonReportModal(false)}
@@ -319,11 +321,13 @@ export default function Dashboard({ business, businesses, onSelectBusiness, onSh
                 ×
               </button>
             </div>
-            <div className="p-6">
-              <ReportView
-                business={business}
-                insights={insights}
-              />
+            <div className="overflow-y-auto flex-1">
+              <div className="p-4">
+                <ReportView
+                  business={business}
+                  insights={insights}
+                />
+              </div>
             </div>
           </div>
         </div>

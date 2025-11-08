@@ -94,6 +94,42 @@ export function calculateChange(current: number, previous: number): {
   return { value, percentage, trend };
 }
 
+// 여러 인사이트 데이터를 합산하여 하나의 InsightData로 만들기
+export function mergeInsights(insights: InsightData[]): InsightData | null {
+  if (insights.length === 0) return null;
+  if (insights.length === 1) return insights[0];
+  
+  // 가장 최신 데이터를 기준으로 사용
+  const base = insights[0];
+  
+  // 모든 데이터를 합산
+  const merged: InsightData = {
+    ...base,
+    views: {
+      reachedAccounts: insights.reduce((sum, i) => sum + i.views.reachedAccounts, 0),
+      totalViews: insights.reduce((sum, i) => sum + i.views.totalViews, 0),
+    },
+    contentTypes: {
+      posts: insights.reduce((sum, i) => sum + i.contentTypes.posts, 0),
+      stories: insights.reduce((sum, i) => sum + i.contentTypes.stories, 0),
+      reels: insights.reduce((sum, i) => sum + i.contentTypes.reels, 0),
+    },
+    metrics: {
+      totalViews: insights.reduce((sum, i) => sum + i.metrics.totalViews, 0),
+      reactions: insights.reduce((sum, i) => sum + i.metrics.reactions, 0),
+      newFollowers: insights.reduce((sum, i) => sum + i.metrics.newFollowers, 0),
+    },
+    profileActivity: {
+      total: insights.reduce((sum, i) => sum + i.profileActivity.total, 0),
+      profileVisits: insights.reduce((sum, i) => sum + i.profileActivity.profileVisits, 0),
+      externalLinkTaps: insights.reduce((sum, i) => sum + i.profileActivity.externalLinkTaps, 0),
+      businessAddressTaps: insights.reduce((sum, i) => sum + i.profileActivity.businessAddressTaps, 0),
+    },
+  };
+  
+  return merged;
+}
+
 // 비교 데이터 생성
 export function createComparisonData(
   current: InsightData,
