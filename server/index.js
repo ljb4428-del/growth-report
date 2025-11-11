@@ -12,7 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // 미들웨어
 app.use(cors());
@@ -541,6 +542,26 @@ app.post('/api/settings/ai', async (req, res) => {
 });
 
 // 이미지 업로드 API
+app.post('/api/upload', upload.single('image'), async (req, res) => {
+  try {
+    const file = req.file;
+    log('info', '이미지 업로드 요청', { fileName: file?.originalname });
+
+    if (!file) {
+      return res.status(400).json({ success: false, error: 'No file provided' });
+    }
+
+    const filename = file.filename;
+    const url = `/uploads/${filename}`;
+    log('success', '이미지 업로드 완료', { filename, url });
+    res.json({ success: true, data: { url, filename } });
+  } catch (error) {
+    log('error', '이미지 업로드 실패', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 기존 엔드포인트 호환성 유지
 app.post('/api/upload/image', upload.single('image'), async (req, res) => {
   try {
     const file = req.file;
@@ -563,8 +584,23 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+// 프로덕션 모드에서 프론트엔드 정적 파일 서빙
+if (NODE_ENV === 'production') {
+  const FRONTEND_BUILD_PATH = process.env.FRONTEND_BUILD_PATH || path.join(__dirname, '../dist');
+  app.use(express.static(FRONTEND_BUILD_PATH));
+  
+  // 모든 라우트를 index.html로 리다이렉트 (SPA 라우팅 지원)
+  app.get('*', (req, res) => {
+    // API 경로는 제외
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ success: false, error: 'API endpoint not found' });
+    }
+    res.sendFile(path.join(FRONTEND_BUILD_PATH, 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
-  log('info', `서버가 포트 ${PORT}에서 실행 중입니다`);
+  log('info', `서버가 포트 ${PORT}에서 실행 중입니다 (${NODE_ENV} 모드)`);
   ensureDir(DATA_DIR);
   ensureDir(UPLOADS_DIR);
 });

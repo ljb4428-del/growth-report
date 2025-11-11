@@ -122,7 +122,7 @@ export default function ReportContent({ business, insights, settings }: Props) {
                 {latestInsight.originalImages.map((imagePath, index) => (
                   <PhoneFrame
                     key={index}
-                    imageUrl={`http://localhost:3000/uploads/${imagePath}`}
+                    imageUrl={`${window.location.origin}/uploads/${imagePath}`}
                     caption={`스크린샷 ${index + 1}`}
                   />
                 ))}
@@ -386,13 +386,23 @@ export default function ReportContent({ business, insights, settings }: Props) {
                   />
                 </div>
 
-                {settings.includeGraphs.lineChart && insights.length > 1 && (
-                  <LineChartComponent
-                    insights={sortedInsights}
-                    dataKey="metrics.newFollowers"
-                    title="새 팔로워 추이"
-                    color="#10b981"
-                  />
+                {settings.includeGraphs.lineChart && (
+                  <div className="panel">
+                    {insights.length > 1 ? (
+                      <LineChartComponent
+                        insights={sortedInsights}
+                        dataKey="metrics.newFollowers"
+                        title="새 팔로워 추이"
+                        color="#10b981"
+                      />
+                    ) : (
+                      <BarChartComponent
+                        insights={chartInsights}
+                        dataKeys={['metrics.totalViews', 'metrics.reactions', 'metrics.newFollowers']}
+                        title="기타 지표 현황"
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             )}

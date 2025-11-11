@@ -10,7 +10,9 @@
     "server": "node server/index.js",
     "start": "npm run dev",
     "실행해": "npm run dev",
-    "start:both": "npm-run-all --parallel dev server"
+    "start:both": "npm-run-all --parallel dev server",
+    "build:prod": "npm run build && npm run server",
+    "deploy": "npm run build && NODE_ENV=production node server/index.js"
   },
   "dependencies": {
     "axios": "^1.6.7",

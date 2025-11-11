@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Business, InsightData } from '../types';
-import { aiAPI, insightAPI } from '../utils/api';
+import { aiAPI, insightAPI, uploadAPI } from '../utils/api';
 import { logger } from '../utils/logger';
 import { Upload, Image as ImageIcon, X } from 'lucide-react';
 import DataEditor from './DataEditor';
@@ -114,18 +114,11 @@ export default function DataUpload({ business, onSuccess }: Props) {
         logger.info('이미지 업로드 시작', { count: files.length });
         
         for (const file of files) {
-          const formData = new FormData();
-          formData.append('image', file);
-          formData.append('businessId', business.id);
-          
-          const response = await fetch('http://localhost:3000/api/upload/image', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            uploadedImages.push(result.data.filename);
+          const result = await uploadAPI.uploadImage(file, business.id, 'insight');
+          if (result.success && result.data) {
+            // URL에서 파일명 추출 (예: /uploads/filename.jpg -> filename.jpg)
+            const filename = result.data.url.split('/').pop() || '';
+            uploadedImages.push(filename);
           } else {
             logger.error('이미지 업로드 실패', file.name);
           }

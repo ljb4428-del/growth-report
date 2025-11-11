@@ -76,6 +76,30 @@ data/
             └── 30days.json # 30일 데이터
 ```
 
+## 배포
+
+### 프로덕션 빌드
+
+```bash
+npm run build
+NODE_ENV=production node server/index.js
+```
+
+### Render.com 배포
+
+자세한 배포 가이드는 [DEPLOY.md](./DEPLOY.md)를 참고하세요.
+
+1. GitHub에 코드 푸시
+2. Render.com에서 Web Service 생성
+3. GitHub 저장소 연결
+4. Build Command: `npm install && npm run build`
+5. Start Command: `NODE_ENV=production node server/index.js`
+
+### 환경 변수
+
+- `NODE_ENV`: `production` (프로덕션 모드)
+- `PORT`: 서버 포트 (기본값: 5000)
+
 ## 라이선스
 
 MIT License
