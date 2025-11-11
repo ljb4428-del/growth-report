@@ -587,21 +587,41 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 // 프로덕션 모드에서 프론트엔드 정적 파일 서빙
 if (NODE_ENV === 'production') {
   const FRONTEND_BUILD_PATH = process.env.FRONTEND_BUILD_PATH || path.join(__dirname, '../dist');
-  app.use(express.static(FRONTEND_BUILD_PATH));
+  
+  // 정적 파일 서빙 (API 경로 제외)
+  app.use(express.static(FRONTEND_BUILD_PATH, {
+    index: false, // index.html 자동 서빙 비활성화 (수동 처리)
+  }));
   
   // 모든 라우트를 index.html로 리다이렉트 (SPA 라우팅 지원)
-  app.get('*', (req, res) => {
+  // API 경로와 정적 파일 경로는 제외
+  app.get('*', (req, res, next) => {
     // API 경로는 제외
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ success: false, error: 'API endpoint not found' });
     }
-    res.sendFile(path.join(FRONTEND_BUILD_PATH, 'index.html'));
+    // 업로드 파일 경로는 제외
+    if (req.path.startsWith('/uploads')) {
+      return next();
+    }
+    
+    const indexPath = path.join(FRONTEND_BUILD_PATH, 'index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        log('error', 'index.html 전송 실패', err.message);
+        res.status(500).send('Internal Server Error');
+      }
+    });
   });
 }
 
-app.listen(PORT, () => {
-  log('info', `서버가 포트 ${PORT}에서 실행 중입니다 (${NODE_ENV} 모드)`);
-  ensureDir(DATA_DIR);
-  ensureDir(UPLOADS_DIR);
+// 서버 시작
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, async () => {
+  log('info', `서버가 ${HOST}:${PORT}에서 실행 중입니다 (${NODE_ENV} 모드)`);
+  await ensureDir(DATA_DIR);
+  await ensureDir(UPLOADS_DIR);
+  log('info', '데이터 디렉토리 준비 완료');
 });
 

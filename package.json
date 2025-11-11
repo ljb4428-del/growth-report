@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "start": "npm run dev",
+    "start": "NODE_ENV=production node server/index.js",
     "실행해": "npm run dev",
     "start:both": "npm-run-all --parallel dev server",
     "build:prod": "npm run build && npm run server",
